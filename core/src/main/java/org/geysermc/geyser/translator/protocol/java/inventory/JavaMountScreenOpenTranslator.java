@@ -56,12 +56,31 @@ import java.util.List;
 
 @Translator(packet = ClientboundMountScreenOpenPacket.class)
 public class JavaMountScreenOpenTranslator extends PacketTranslator<ClientboundMountScreenOpenPacket> {
-    private static final String[] ACCEPTED_HORSE_ARMORS = new String[] {"minecraft:horsearmorleather", "minecraft:horsearmoriron",
-        "minecraft:horsearmorgold", "minecraft:horsearmordiamond", "minecraft:copper_horse_armor", "minecraft:netherite_horse_armor"};
-    private static final String[] ACCEPTED_NAUTILUS_ARMORS = new String[] {"minecraft:copper_nautilus_armor", "minecraft:iron_nautilus_armor",
-        "minecraft:golden_nautilus_armor", "minecraft:diamond_nautilus_armor", "minecraft:netherite_nautilus_armor"};
+    public static final String[] ACCEPTED_HORSE_ARMORS = new String[] {
+        "minecraft:horsearmorleather", 
+        "minecraft:horsearmoriron",
+        "minecraft:horsearmorgold", 
+        "minecraft:horsearmordiamond",
+        "minecraft:copper_horse_armor", 
+        "minecraft:netherite_horse_armor"};
+    private static final String[] ACCEPTED_NAUTILUS_ARMORS = new String[] {
+        "minecraft:copper_nautilus_armor", 
+        "minecraft:iron_nautilus_armor",
+        "minecraft:golden_nautilus_armor", 
+        "minecraft:diamond_nautilus_armor", 
+        "minecraft:netherite_nautilus_armor"};
+    
+    
+    // ISSUE #6535: Java items that correspond to horse armor
+    private static final Set<Item> BASE_HORSE_ARMOR_ITEMS = Set.of(
+        Items.LEATHER_HORSE_ARMOR,
+        Items.IRON_HORSE_ARMOR,
+        Items.GOLDEN_HORSE_ARMOR,
+        Items.DIAMOND_HORSE_ARMOR
+    );
 
 
+    
     private static final NbtMap SADDLE_SLOT, CARPET_SLOT;
     private static final NbtMap HORSE_ARMOR_SLOT, NAUTILUS_ARMOR_SLOT;
 
@@ -89,6 +108,45 @@ public class JavaMountScreenOpenTranslator extends PacketTranslator<ClientboundM
         saddleBuilder.putInt("slotNumber", 0);
         SADDLE_SLOT = saddleBuilder.build();
     }
+
+
+    /**
+     * Extracts custom horse armor identifiers registered in the current session.
+     */
+    public static List<String> getCustomHorseArmorIdentifiers(GeyserSession session) {
+        List<String> customArmors = new ArrayList<>();
+        if (session == null || session.getItemMappings() == null || session.getItemMappings().getCustomItems() == null) {
+            return customArmors;
+        }
+
+        for (GeyserCustomMappingData customData : session.getItemMappings().getCustomItems().values()) {
+            if (BASE_HORSE_ARMOR_ITEMS.contains(customData.getJavaItem())) {
+                String bedrockIdentifier = customData.getCustomItemData().name();
+                if (bedrockIdentifier != null && !bedrockIdentifier.isEmpty()) {
+                    customArmors.add(bedrockIdentifier);
+                }
+            }
+        }
+        return customArmors;
+    }
+
+    /**
+     * Combines vanilla base horse armors with custom registered horse armors.
+     */
+    public static String[] getCombinedHorseArmors(List<String> customIdentifiers) {
+        if (customIdentifiers == null || customIdentifiers.isEmpty()) {
+            return BASE_ACCEPTED_HORSE_ARMORS;
+        }
+
+        List<String> combined = new ArrayList<>(List.of(BASE_ACCEPTED_HORSE_ARMORS));
+        for (String customId : customIdentifiers) {
+            if (!combined.contains(customId)) {
+                combined.add(customId);
+            }
+        }
+        return combined.toArray(new String[0]);
+    }
+
 
     private static NbtMap buildAcceptedArmorSlot(String[] accepted, String name) {
         NbtMapBuilder armorBuilder = NbtMap.builder();
