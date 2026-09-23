@@ -23,7 +23,10 @@
  * @link https://github.com/GeyserMC/Geyser
  */
 
+import org.geysermc.geyser.item.type.Item;
+
 package org.geysermc.geyser.translator.protocol.java.inventory;
+import java.util.Set;
 
 import org.cloudburstmc.nbt.NbtMap;
 import org.cloudburstmc.nbt.NbtMapBuilder;
@@ -79,8 +82,6 @@ public class JavaMountScreenOpenTranslator extends PacketTranslator<ClientboundM
         Items.DIAMOND_HORSE_ARMOR
     );
 
-
-    
     private static final NbtMap SADDLE_SLOT, CARPET_SLOT;
     private static final NbtMap HORSE_ARMOR_SLOT, NAUTILUS_ARMOR_SLOT;
 

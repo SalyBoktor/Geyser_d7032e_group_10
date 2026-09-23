@@ -25,6 +25,8 @@
 
 package org.geysermc.geyser.translator.inventory.item;
 
+import org.geysermc.geyser.translator.protocol.java.inventory.JavaMountScreenOpenTranslator;
+
 //import com.github.steveice10.opennbt.tag.builtin.ByteTag;
 //import com.github.steveice10.opennbt.tag.builtin.CompoundTag;
 //import com.github.steveice10.opennbt.tag.builtin.IntTag;
@@ -39,12 +41,50 @@ package org.geysermc.geyser.translator.inventory.item;
 //import org.geysermc.geyser.registry.type.ItemMapping;
 //import org.junit.jupiter.api.Assertions;
 //import org.junit.jupiter.api.BeforeAll;
-//import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Test;
 //
 //import java.util.HashMap;
-//import java.util.List;
+import java.util.List;
 //import java.util.Map;
 //import java.util.OptionalInt;
+import java.util.Collections;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class JavaMountScreenOpenTranslatorTest {
+
+    @Test
+    public void testGetCombinedHorseArmors_NullOrEmpty_ReturnsBaseArmors() {
+        String[] resultNull = JavaMountScreenOpenTranslator.getCombinedHorseArmors(null);
+        assertArrayEquals(JavaMountScreenOpenTranslator.BASE_ACCEPTED_HORSE_ARMORS, resultNull);
+
+        String[] resultEmpty = JavaMountScreenOpenTranslator.getCombinedHorseArmors(Collections.emptyList());
+        assertArrayEquals(JavaMountScreenOpenTranslator.BASE_ACCEPTED_HORSE_ARMORS, resultEmpty);
+    }
+
+    @Test
+    public void testGetCombinedHorseArmors_WithCustomArmors_AppendsCustomArmors() {
+        List<String> customArmors = List.of("myplugin:ruby_horse_armor", "myplugin:emerald_horse_armor");
+        String[] result = JavaMountScreenOpenTranslator.getCombinedHorseArmors(customArmors);
+
+        int expectedLength = JavaMountScreenOpenTranslator.BASE_ACCEPTED_HORSE_ARMORS.length + 2;
+        assertEquals(expectedLength, result.length);
+
+        List<String> resultList = List.of(result);
+        assertTrue(resultList.contains("minecraft:horsearmorleather"));
+        assertTrue(resultList.contains("myplugin:ruby_horse_armor"));
+        assertTrue(resultList.contains("myplugin:emerald_horse_armor"));
+    }
+
+    @Test
+    public void testGetCombinedHorseArmors_PreventsDuplicates() {
+        List<String> customArmors = List.of("minecraft:horsearmorleather", "myplugin:unique_horse_armor");
+        String[] result = JavaMountScreenOpenTranslator.getCombinedHorseArmors(customArmors);
+
+        int expectedLength = JavaMountScreenOpenTranslator.BASE_ACCEPTED_HORSE_ARMORS.length + 1;
+        assertEquals(expectedLength, result.length);
+    }
+}
 
 //@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 //public class CustomItemsTest {
