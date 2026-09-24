@@ -23,26 +23,27 @@
  * @link https://github.com/GeyserMC/Geyser
  */
 
-import org.geysermc.geyser.item.type.Item;
-
 package org.geysermc.geyser.translator.protocol.java.inventory;
-import java.util.Set;
 
+import com.google.common.collect.SortedSetMultimap;
+import net.kyori.adventure.key.Key;
 import org.cloudburstmc.nbt.NbtMap;
 import org.cloudburstmc.nbt.NbtMapBuilder;
 import org.cloudburstmc.nbt.NbtType;
 import org.cloudburstmc.protocol.bedrock.data.entity.EntityFlag;
 import org.cloudburstmc.protocol.bedrock.data.inventory.ContainerType;
 import org.cloudburstmc.protocol.bedrock.packet.UpdateEquipPacket;
+import org.geysermc.geyser.api.util.Identifier;
 import org.geysermc.geyser.entity.type.Entity;
 import org.geysermc.geyser.entity.type.living.animal.horse.CamelEntity;
 import org.geysermc.geyser.entity.type.living.animal.horse.ChestedHorseEntity;
 import org.geysermc.geyser.entity.type.living.animal.horse.LlamaEntity;
 import org.geysermc.geyser.entity.type.living.animal.horse.SkeletonHorseEntity;
-import org.geysermc.geyser.entity.type.living.animal.horse.ZombieHorseEntity;
 import org.geysermc.geyser.entity.type.living.animal.nautilus.NautilusEntity;
 import org.geysermc.geyser.inventory.Container;
 import org.geysermc.geyser.inventory.InventoryHolder;
+import org.geysermc.geyser.item.GeyserCustomMappingData;
+import org.geysermc.geyser.registry.type.ItemMapping;
 import org.geysermc.geyser.session.GeyserSession;
 import org.geysermc.geyser.translator.inventory.InventoryTranslator;
 import org.geysermc.geyser.translator.inventory.horse.DonkeyInventoryTranslator;
@@ -55,38 +56,31 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.C
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Translator(packet = ClientboundMountScreenOpenPacket.class)
 public class JavaMountScreenOpenTranslator extends PacketTranslator<ClientboundMountScreenOpenPacket> {
-    public static final String[] ACCEPTED_HORSE_ARMORS = new String[] {
-        "minecraft:horsearmorleather", 
-        "minecraft:horsearmoriron",
-        "minecraft:horsearmorgold", 
-        "minecraft:horsearmordiamond",
-        "minecraft:copper_horse_armor", 
-        "minecraft:netherite_horse_armor"};
-    private static final String[] ACCEPTED_NAUTILUS_ARMORS = new String[] {
-        "minecraft:copper_nautilus_armor", 
-        "minecraft:iron_nautilus_armor",
-        "minecraft:golden_nautilus_armor", 
-        "minecraft:diamond_nautilus_armor", 
-        "minecraft:netherite_nautilus_armor"};
-    
-    
-    // ISSUE #6535: Java items that correspond to horse armor
-    private static final Set<Item> BASE_HORSE_ARMOR_ITEMS = Set.of(
-        Items.LEATHER_HORSE_ARMOR,
-        Items.IRON_HORSE_ARMOR,
-        Items.GOLDEN_HORSE_ARMOR,
-        Items.DIAMOND_HORSE_ARMOR
-    );
+    // ISSUE #6535: these are the JAVA identifiers of every item that is legitimate horse armor.
+    // We resolve each one through the *current session's* item mappings, so that if a server/extension
+    // has registered a custom Bedrock identifier for one of these (overriding the vanilla item),
+    // that custom identifier ends up in the Bedrock GUI's acceptedItems instead of being hard-coded.
+    private static final String[] VANILLA_HORSE_ARMOR_JAVA_IDENTIFIERS = new String[] {
+        "minecraft:leather_horse_armor",
+        "minecraft:iron_horse_armor",
+        "minecraft:golden_horse_armor",
+        "minecraft:diamond_horse_armor",
+        "minecraft:copper_horse_armor",
+        "minecraft:netherite_horse_armor"
+    };
 
-    private static final NbtMap SADDLE_SLOT, CARPET_SLOT;
-    private static final NbtMap HORSE_ARMOR_SLOT, NAUTILUS_ARMOR_SLOT;
+    private static final String[] ACCEPTED_NAUTILUS_ARMORS = new String[] {"minecraft:copper_nautilus_armor", "minecraft:iron_nautilus_armor",
+        "minecraft:golden_nautilus_armor", "minecraft:diamond_nautilus_armor", "minecraft:netherite_nautilus_armor"};
+
+    private static final NbtMap SADDLE_SLOT, CARPET_SLOT, NAUTILUS_ARMOR_SLOT;
 
     static {
-        HORSE_ARMOR_SLOT = buildAcceptedArmorSlot(ACCEPTED_HORSE_ARMORS, "minecraft:horsearmoriron");
         NAUTILUS_ARMOR_SLOT = buildAcceptedArmorSlot(ACCEPTED_NAUTILUS_ARMORS, "minecraft:nautilusarmor");
 
         NbtMapBuilder carpetBuilder = NbtMap.builder();
@@ -110,48 +104,9 @@ public class JavaMountScreenOpenTranslator extends PacketTranslator<ClientboundM
         SADDLE_SLOT = saddleBuilder.build();
     }
 
-
-    /**
-     * Extracts custom horse armor identifiers registered in the current session.
-     */
-    public static List<String> getCustomHorseArmorIdentifiers(GeyserSession session) {
-        List<String> customArmors = new ArrayList<>();
-        if (session == null || session.getItemMappings() == null || session.getItemMappings().getCustomItems() == null) {
-            return customArmors;
-        }
-
-        for (GeyserCustomMappingData customData : session.getItemMappings().getCustomItems().values()) {
-            if (BASE_HORSE_ARMOR_ITEMS.contains(customData.getJavaItem())) {
-                String bedrockIdentifier = customData.getCustomItemData().name();
-                if (bedrockIdentifier != null && !bedrockIdentifier.isEmpty()) {
-                    customArmors.add(bedrockIdentifier);
-                }
-            }
-        }
-        return customArmors;
-    }
-
-    /**
-     * Combines vanilla base horse armors with custom registered horse armors.
-     */
-    public static String[] getCombinedHorseArmors(List<String> customIdentifiers) {
-        if (customIdentifiers == null || customIdentifiers.isEmpty()) {
-            return BASE_ACCEPTED_HORSE_ARMORS;
-        }
-
-        List<String> combined = new ArrayList<>(List.of(BASE_ACCEPTED_HORSE_ARMORS));
-        for (String customId : customIdentifiers) {
-            if (!combined.contains(customId)) {
-                combined.add(customId);
-            }
-        }
-        return combined.toArray(new String[0]);
-    }
-
-
     private static NbtMap buildAcceptedArmorSlot(String[] accepted, String name) {
         NbtMapBuilder armorBuilder = NbtMap.builder();
-        List<NbtMap> acceptedArmors = new ArrayList<>(4);
+        List<NbtMap> acceptedArmors = new ArrayList<>(accepted.length);
 
         for (String identifier : accepted) {
             NbtMapBuilder acceptedItemBuilder = NbtMap.builder()
@@ -169,6 +124,39 @@ public class JavaMountScreenOpenTranslator extends PacketTranslator<ClientboundM
         return armorBuilder.build();
     }
 
+    /**
+     * ISSUE #6535: builds the horse armor slot for the current session, including any custom
+     * Bedrock identifiers registered against a vanilla horse armor Java item — both a full
+     * item override (mapping's own bedrockIdentifier) and any additional variants registered
+     * via item-model/predicate matching (mapping's customItemDefinitions).
+     */
+    private static NbtMap buildHorseArmorSlot(GeyserSession session) {
+        Set<String> acceptedBedrockIdentifiers = new LinkedHashSet<>();
+
+        for (String javaIdentifier : VANILLA_HORSE_ARMOR_JAVA_IDENTIFIERS) {
+            ItemMapping mapping = session.getItemMappings().getMapping(javaIdentifier);
+            if (mapping == null) {
+                continue;
+            }
+
+            if (mapping.getBedrockIdentifier() != null) {
+                acceptedBedrockIdentifiers.add(mapping.getBedrockIdentifier());
+            }
+
+            SortedSetMultimap<Key, GeyserCustomMappingData> customDefinitions = mapping.getCustomItemDefinitions();
+            if (customDefinitions != null) {
+                for (GeyserCustomMappingData customMapping : customDefinitions.values()) {
+                    Identifier bedrockIdentifier = customMapping.definition().bedrockIdentifier();
+                    if (bedrockIdentifier != null) {
+                        acceptedBedrockIdentifiers.add(bedrockIdentifier.toString());
+                    }
+                }
+            }
+        }
+
+        return buildAcceptedArmorSlot(acceptedBedrockIdentifiers.toArray(new String[0]), "minecraft:horsearmoriron");
+    }
+
     @Override
     public void translate(GeyserSession session, ClientboundMountScreenOpenPacket packet) {
         Entity entity = session.getEntityCache().getEntityByJavaId(packet.getEntityId());
@@ -184,9 +172,7 @@ public class JavaMountScreenOpenTranslator extends PacketTranslator<ClientboundM
         NbtMapBuilder builder = NbtMap.builder();
         List<NbtMap> slots = new ArrayList<>();
 
-        // Since 1.20.5, the armor slot is not included in the container size,
-        // but everything is still indexed the same.
-        int slotCount = 2; // Don't depend on slot count sent from server
+        int slotCount = 2;
 
         InventoryTranslator<Container> inventoryTranslator;
         switch (entity) {
@@ -208,7 +194,6 @@ public class JavaMountScreenOpenTranslator extends PacketTranslator<ClientboundM
                 if (entity.getFlag(EntityFlag.CHESTED)) {
                     slotCount += 15;
                 }
-                // The camel has an invisible armor slot and needs special handling, same as the donkey
                 inventoryTranslator = new DonkeyInventoryTranslator(slotCount);
                 slots.add(SADDLE_SLOT);
             }
@@ -218,14 +203,12 @@ public class JavaMountScreenOpenTranslator extends PacketTranslator<ClientboundM
                 if (entity instanceof NautilusEntity) {
                     slots.add(NAUTILUS_ARMOR_SLOT);
                 } else if (!(entity instanceof SkeletonHorseEntity)) {
-                    slots.add(HORSE_ARMOR_SLOT);
+                    slots.add(buildHorseArmorSlot(session));
                 }
             }
         }
 
-        // Build the NbtMap that sets the icons for Bedrock (e.g. sets the saddle outline on the saddle slot)
         builder.putList("slots", NbtType.COMPOUND, slots);
-
         updateEquipPacket.setTag(builder.build());
         session.sendUpstreamPacket(updateEquipPacket);
 
