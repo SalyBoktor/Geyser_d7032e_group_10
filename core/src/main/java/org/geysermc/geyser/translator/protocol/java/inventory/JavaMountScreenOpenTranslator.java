@@ -62,27 +62,21 @@ import java.util.Set;
 
 @Translator(packet = ClientboundMountScreenOpenPacket.class)
 public class JavaMountScreenOpenTranslator extends PacketTranslator<ClientboundMountScreenOpenPacket> {
-    // ISSUE #6535: these are the JAVA identifiers of every item that is legitimate
-    // horse armor.
-    // We resolve each one through the *current session's* item mappings, so that if
-    // a server/extension
-    // has registered a custom Bedrock identifier for one of these (overriding the
-    // vanilla item),
-    // that custom identifier ends up in the Bedrock GUI's acceptedItems instead of
-    // being hard-coded.
+    // ISSUE #6535: these are the JAVA identifiers of every item that is legitimate horse armor.
+    // We resolve each one through the *current session's* item mappings, so that if a server/extension
+    // has registered a custom Bedrock identifier for one of these (overriding the vanilla item),
+    // that custom identifier ends up in the Bedrock GUI's acceptedItems instead of being hard-coded.
     private static final String[] VANILLA_HORSE_ARMOR_JAVA_IDENTIFIERS = new String[] {
-            "minecraft:leather_horse_armor",
-            "minecraft:iron_horse_armor",
-            "minecraft:golden_horse_armor",
-            "minecraft:diamond_horse_armor",
-            "minecraft:copper_horse_armor",
-            "minecraft:netherite_horse_armor"
+        "minecraft:leather_horse_armor",
+        "minecraft:iron_horse_armor",
+        "minecraft:golden_horse_armor",
+        "minecraft:diamond_horse_armor",
+        "minecraft:copper_horse_armor",
+        "minecraft:netherite_horse_armor"
     };
 
-    private static final String[] ACCEPTED_NAUTILUS_ARMORS = new String[] { "minecraft:copper_nautilus_armor",
-            "minecraft:iron_nautilus_armor",
-            "minecraft:golden_nautilus_armor", "minecraft:diamond_nautilus_armor",
-            "minecraft:netherite_nautilus_armor" };
+    private static final String[] ACCEPTED_NAUTILUS_ARMORS = new String[] {"minecraft:copper_nautilus_armor", "minecraft:iron_nautilus_armor",
+        "minecraft:golden_nautilus_armor", "minecraft:diamond_nautilus_armor", "minecraft:netherite_nautilus_armor"};
 
     private static final NbtMap SADDLE_SLOT, CARPET_SLOT, NAUTILUS_ARMOR_SLOT;
 
@@ -91,10 +85,9 @@ public class JavaMountScreenOpenTranslator extends PacketTranslator<ClientboundM
 
         NbtMapBuilder carpetBuilder = NbtMap.builder();
         NbtMapBuilder carpetItem = NbtMap.builder()
-                .putShort("Aux", Short.MAX_VALUE)
-                .putString("Name", "minecraft:carpet");
-        List<NbtMap> acceptedCarpet = Collections
-                .singletonList(NbtMap.builder().putCompound("slotItem", carpetItem.build()).build());
+            .putShort("Aux", Short.MAX_VALUE)
+            .putString("Name", "minecraft:carpet");
+        List<NbtMap> acceptedCarpet = Collections.singletonList(NbtMap.builder().putCompound("slotItem", carpetItem.build()).build());
         carpetBuilder.putList("acceptedItems", NbtType.COMPOUND, acceptedCarpet);
         carpetBuilder.putCompound("item", carpetItem.build());
         carpetBuilder.putInt("slotNumber", 1);
@@ -102,46 +95,42 @@ public class JavaMountScreenOpenTranslator extends PacketTranslator<ClientboundM
 
         NbtMapBuilder saddleBuilder = NbtMap.builder();
         NbtMapBuilder acceptedSaddle = NbtMap.builder()
-                .putShort("Aux", Short.MAX_VALUE)
-                .putString("Name", "minecraft:saddle");
-        List<NbtMap> acceptedItem = Collections
-                .singletonList(NbtMap.builder().putCompound("slotItem", acceptedSaddle.build()).build());
+            .putShort("Aux", Short.MAX_VALUE)
+            .putString("Name", "minecraft:saddle");
+        List<NbtMap> acceptedItem = Collections.singletonList(NbtMap.builder().putCompound("slotItem", acceptedSaddle.build()).build());
         saddleBuilder.putList("acceptedItems", NbtType.COMPOUND, acceptedItem);
         saddleBuilder.putCompound("item", acceptedSaddle.build());
         saddleBuilder.putInt("slotNumber", 0);
         SADDLE_SLOT = saddleBuilder.build();
     }
 
-    static NbtMap buildAcceptedArmorSlot(String[] accepted, String name) {
+    private static NbtMap buildAcceptedArmorSlot(String[] accepted, String name) {
         NbtMapBuilder armorBuilder = NbtMap.builder();
         List<NbtMap> acceptedArmors = new ArrayList<>(accepted.length);
 
         for (String identifier : accepted) {
             NbtMapBuilder acceptedItemBuilder = NbtMap.builder()
-                    .putShort("Aux", Short.MAX_VALUE)
-                    .putString("Name", identifier);
+                .putShort("Aux", Short.MAX_VALUE)
+                .putString("Name", identifier);
             acceptedArmors.add(NbtMap.builder().putCompound("slotItem", acceptedItemBuilder.build()).build());
         }
 
         armorBuilder.putList("acceptedItems", NbtType.COMPOUND, acceptedArmors);
         NbtMapBuilder armorItem = NbtMap.builder()
-                .putShort("Aux", Short.MAX_VALUE)
-                .putString("Name", name);
+            .putShort("Aux", Short.MAX_VALUE)
+            .putString("Name", name);
         armorBuilder.putCompound("item", armorItem.build());
         armorBuilder.putInt("slotNumber", 1);
         return armorBuilder.build();
     }
 
     /**
-     * ISSUE #6535: builds the horse armor slot for the current session, including
-     * any custom
-     * Bedrock identifiers registered against a vanilla horse armor Java item — both
-     * a full
-     * item override (mapping's own bedrockIdentifier) and any additional variants
-     * registered
+     * ISSUE #6535: builds the horse armor slot for the current session, including any custom
+     * Bedrock identifiers registered against a vanilla horse armor Java item — both a full
+     * item override (mapping's own bedrockIdentifier) and any additional variants registered
      * via item-model/predicate matching (mapping's customItemDefinitions).
      */
-    static NbtMap buildHorseArmorSlot(GeyserSession session) {
+    private static NbtMap buildHorseArmorSlot(GeyserSession session) {
         Set<String> acceptedBedrockIdentifiers = new LinkedHashSet<>();
 
         for (String javaIdentifier : VANILLA_HORSE_ARMOR_JAVA_IDENTIFIERS) {
